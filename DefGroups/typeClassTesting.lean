@@ -36,5 +36,3 @@ structure bounded_poset (α : Type*) extends poset1 α where
   zero : α
   zero_le : ∀ x : α, le zero x
   le_one : ∀ x : α, le x one
-
-theorem
