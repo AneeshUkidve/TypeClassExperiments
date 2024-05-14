@@ -131,6 +131,7 @@ theorem nat_to_real_inj0 (n : ℕ) (h : nat_to_real n = 0) : n = 0 := by
     apply lt_of_le_of_lt h5 h4
   simp at h6
 
+
 theorem nat_to_real_lin : ∀ a b : ℕ, nat_to_real (a + b) = nat_to_real a + nat_to_real b := by
   intro a b
   induction b with
@@ -152,6 +153,30 @@ theorem nat_to_real_monotone : ∀ a b : ℕ, a ≤ b → nat_to_real a ≤ nat_
   simp [Nat.add_comm] at h3
   simp [Nat.add_sub_cancel' h] at h3
   exact h3
+
+theorem nat_to_real_inj : ∀ m n : Nat, nat_to_real m = nat_to_real n → m = n := by
+  intro m n h
+  induction n generalizing m with
+  |zero =>
+    simp at h
+    simp [nat_to_real] at h
+    apply nat_to_real_inj0 at h
+    simp
+    exact h
+  |succ d hd =>
+    cases m
+    simp at h
+    rw [nat_to_real] at h
+    symm at h
+    apply nat_to_real_inj0 at h
+    simp at h
+
+    rename_i m
+    simp [nat_to_real] at h
+    apply hd at h
+    simp
+    exact h
+
 
 theorem natAbs_triangle  : ∀ a b c : ℤ, Int.natAbs (a - c) ≤ Int.natAbs (a - b) + Int.natAbs (b - c) := by
   intro a b c
@@ -207,27 +232,162 @@ namespace IsometricZ
 def inv_func : (Int → Int) → (Int → Int)
   | f => fun x => ((f 1) - (f 0)) * (x - f 0)
 
-theorem f_f_inv_eq_self [M : MyMetricSpace Int] (f : IsometricZ) :
-  ∀ x : Int, f.func (inv_func f.func x) = x := by
-  sorry
 
-theorem inv_func_d_preserve [M : MyMetricSpace Int] (f : IsometricZ) :
-  ∀ x y : ℤ, M.d x y = M.d (inv_func f.func x) (inv_func f.func y) := by
+theorem inv_func_d_preserve (f : IsometricZ) :
+  ∀ x y : ℤ, MetricZ.d x y = MetricZ.d (inv_func f.func x) (inv_func f.func y) := by
   intro x y
+  simp [inv_func]
+  simp [MetricZ]
+  simp [mul_sub]
+  rw [←mul_sub]
+  simp [Int.natAbs_mul]
+  have h1 : nat_to_real 1 = 1 := by
+    rw [Nat.one_eq_succ_zero]
+    simp [nat_to_real]
+  have h2 : MetricZ.d 1 0 = 1 := by
+    simp [MetricZ]
+    exact h1
+  have h3 : MetricZ.d (f.func 1) (f.func 0) = 1 := by
+    rw [←h2]
+    exact Eq.symm (f.d_preserve 1 0)
+  simp [MetricZ] at h3
+  rw [←h1] at h3
+  apply nat_to_real_inj at h3
+  simp [h3]
+
+
+theorem consecutive_dif_same (f : IsometricZ) (d : ℤ) : f.func (d + 1) - f.func d = f.func d - f.func (d - 1) := by
+  have h : Int.natAbs (f.func (d + 1) - f.func (d - 1)) = 2 := by
+    let h1 := f.d_preserve (d + 1) (d - 1)
+    simp [MyMetricSpace.d] at h1
+    apply nat_to_real_inj at h1
+    symm at h1
+    exact h1
+  simp [Int.natAbs_eq_iff] at h
+
+  have h7 : Int.natAbs (f.func d - f.func (d - 1)) = 1 := by
+    let h1 := f.d_preserve d (d - 1)
+    simp [MyMetricSpace.d] at h1
+    apply nat_to_real_inj at h1
+    symm at h1
+    exact h1
+  simp [Int.natAbs_eq_iff] at h7
+
+  if h2 : f.func d - f.func (d - 1) = 1 then
+    have h3 : f.func (d + 1) - f.func d = 1 := by
+      if h4 : f.func (d + 1) - f.func (d - 1) = 2 then
+        calc
+          _ = f.func (d + 1) - f.func (d - 1) + f.func (d - 1) - f.func d := by ring
+          _ = 2 - (f.func d - f.func (d - 1)) := by rw [h4]; ring
+          _ = 2 - 1 := by rw [h2]
+          _ = 1 := by rfl
+      else
+        simp [h4] at h
+        have h5 : f.func (d + 1) - f.func d = -3 := by
+          calc
+            _ = f.func (d + 1) - f.func (d - 1) + f.func (d - 1) - f.func d := by simp
+            _ = -2 - (f.func d - f.func (d - 1)) := by rw [h]; ring
+            _ = -2 - 1 := by rw [h2]
+            _ = -3 := by rfl
+        have h : Int.natAbs (f.func (d + 1) - f.func d) = 1 := by
+          let h1 := f.d_preserve (d + 1) d
+          simp [MyMetricSpace.d] at h1
+          apply nat_to_real_inj at h1
+          symm at h1
+          exact h1
+        simp [Int.natAbs_eq_iff] at h
+        simp [h5] at h
+    rw [h2, h3]
+  else
+    simp [h2] at h7
+    have h3 : f.func (d + 1) - f.func d = -1 := by
+      if h4 : f.func (d + 1) - f.func (d - 1) = -2 then
+        calc
+          _ = f.func (d + 1) - f.func (d - 1) + f.func (d - 1) - f.func d := by ring
+          _ = -2 - (f.func d - f.func (d - 1)) := by rw [h4]; ring
+          _ = -2 + 1 := by rw [h7]; ring
+          _ = -1 := by rfl
+      else
+        simp [h4] at h
+        have h5 : f.func (d + 1) - f.func d = 3 := by
+          calc
+            _ = f.func (d + 1) - f.func (d - 1) + f.func (d - 1) - f.func d := by simp
+            _ = 2 - (f.func d - f.func (d - 1)) := by rw [h]; ring
+            _ = 2 + 1 := by rw [h7]; ring
+            _ = 3 := by rfl
+        have h : Int.natAbs (f.func (d + 1) - f.func d) = 1 := by
+          let h1 := f.d_preserve (d + 1) d
+          simp [MyMetricSpace.d] at h1
+          apply nat_to_real_inj at h1
+          symm at h1
+          exact h1
+        simp [Int.natAbs_eq_iff] at h
+        simp [h5] at h
+    rw [h3, h7]
+
+theorem consecutive_d_same (f : IsometricZ) : ∀ n : Int, f.func (↑n + 1) - f.func (↑n) = (f.func 1 - f.func 0) := by
+  intro n
+  cases n
+  rename_i n
+  induction n with
+  |zero =>
+    rfl
+  |succ d hd =>
+    simp
+    let h := consecutive_dif_same f (↑d + 1)
+    simp at h
+    simp at hd
+    rw [h, hd]
+  rename_i n
+  induction n with
+  |zero =>
+    simp
+    let h := consecutive_dif_same f 0
+    simp at h;  symm
+    exact h
+  |succ d hd =>
+    simp at hd
+    let h := consecutive_dif_same f (Int.negSucc d)
+    simp at h
+    rw [h] at hd
+
+
+
+
+theorem inv_func_func_eq_self (f : IsometricZ) : ∀ x, (inv_func f.func) (f.func x) = x := by
+  intro x
+  cases x
+  rename_i n
+  induction n with
+  |zero =>
+    simp
+    simp [inv_func]
+  |succ d hd =>
+    simp at hd
+    simp
+    simp [inv_func] at hd
+    simp [inv_func]
+    calc
+      _ = (f.func 1 - f.func 0) * ((f.func (↑d + 1) - f.func (↑d)) + (f.func (↑d) - f.func 0)) := by simp
+      _ = (f.func 1 - f.func 0) * (f.func (↑d + 1) - f.func (↑d)) + (f.func 1 - f.func 0) * (f.func (↑d) - f.func 0) := by rw [mul_add]
+      _ = (f.func 1 - f.func 0) * (f.func (↑d + 1) - f.func (↑d)) + ↑d := by rw [hd]
+      _ = ↑d + (f.func 1 - f.func 0) * (f.func (↑d + 1) - f.func (↑d)) := by rw [add_comm]
+    sorry
   sorry
 
-theorem inv_func_surj [M : MyMetricSpace Int] (f : IsometricZ) :
-  ∀ y : ℤ, ∃ x : Int, inv_func f.func x = y := by
-  sorry
 
-/-Combine all three results to create function inverse which takes
-an Isometry to another-/
+theorem inv_func_surj (f : IsometricZ) : ∀ y : Int, ∃ x, inv_func (f.func x) = y := by
+  intro y
+  exists f.func y
+  sorry
 
 end IsometricZ
 
 instance : MyGroup IsometricZ where
   mul := MyIsometry.comp
-  one := MyIsometry.Id
+  one := MyIsometry.Id/-Combine all three results to create function inverse which takes
+an Isometry to another-/
+
   inv := sorry
   mul_assoc := sorry
   mul_one := sorry
