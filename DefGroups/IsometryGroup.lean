@@ -350,45 +350,87 @@ theorem consecutive_d_same (f : IsometricZ) : ∀ n : Int, f.func (↑n + 1) - f
     let h := consecutive_dif_same f (Int.negSucc d)
     simp at h
     rw [h] at hd
+    have h1 : (Int.negSucc (Nat.succ d) + 1) = Int.negSucc (d) := by rfl
+    have h2 : (Int.negSucc (Nat.succ d)) = Int.negSucc (d + 1) := by rfl
+    rw [h1, h2, hd]
 
-
-
-
-theorem inv_func_func_eq_self (f : IsometricZ) : ∀ x, (inv_func f.func) (f.func x) = x := by
-  intro x
-  cases x
+theorem generalFormIsometry (f : IsometricZ) : ∀x : ℤ, f.func x = f.func 0 + (f.func 1 - f.func 0) * x := by
+  intro n
+  cases n
   rename_i n
   induction n with
   |zero =>
     simp
-    simp [inv_func]
   |succ d hd =>
-    simp at hd
-    simp
-    simp [inv_func] at hd
-    simp [inv_func]
+    simp; simp at hd
+    let h := consecutive_d_same f d
     calc
-      _ = (f.func 1 - f.func 0) * ((f.func (↑d + 1) - f.func (↑d)) + (f.func (↑d) - f.func 0)) := by simp
-      _ = (f.func 1 - f.func 0) * (f.func (↑d + 1) - f.func (↑d)) + (f.func 1 - f.func 0) * (f.func (↑d) - f.func 0) := by rw [mul_add]
-      _ = (f.func 1 - f.func 0) * (f.func (↑d + 1) - f.func (↑d)) + ↑d := by rw [hd]
-      _ = ↑d + (f.func 1 - f.func 0) * (f.func (↑d + 1) - f.func (↑d)) := by rw [add_comm]
-    sorry
-  sorry
+      _ = f.func (d + 1) - f.func d + f.func d := by ring
+      _ = f.func 1 - f.func 0 + f.func d := by rw [h]
+      _ = (f.func 1 - f.func 0) + (f.func 0 + (f.func 1 - f.func 0) * d) := by rw [hd]
+      _ = f.func 0 + (f.func 1- f.func 0) * (d + 1) := by ring
+  rename_i n
+  induction n with
+  |zero =>
+    simp
+    let h := consecutive_dif_same f 0
+    simp at h
+    calc
+      _ = f.func (-1) - f.func 0 + f.func 0 := by ring
+      _ = -(f.func 0 - f.func (-1)) + f.func 0 := by ring
+      _ = -(f.func 1 - f.func 0) + f.func 0 := by rw [h]
+      _ = f.func 0 + (f.func 0 - f.func 1) := by ring
+    |succ d hd =>
+      simp at hd
+      let h := consecutive_d_same f ((Int.negSucc d) - 1)
+      ring_nf at h
+      rw [add_comm] at h
+      rw [←Int.sub_eq_add_neg] at h
+      calc (f.func (Int.negSucc (Nat.succ d)))
+        _ = f.func ((Int.negSucc d) - 1) := by simp
+        _ = f.func ((Int.negSucc d) - 1) - f.func (Int.negSucc d) + f.func (Int.negSucc d) := by ring
+        _ = -(f.func (Int.negSucc d) - f.func ((Int.negSucc d) - 1)) + f.func (Int.negSucc d) := by ring
+        _ = -(f.func 1 - f.func 0) + (f.func 0 + (f.func 1 - f.func 0) * (Int.negSucc d)) := by rw [h, hd]
+        _ = f.func 0 + (f.func 1 - f.func 0) * ((Int.negSucc d) - 1) := by ring
+        _ = f.func 0 + (f.func 1 - f.func 0) * (Int.negSucc (d + 1)) := by simp
 
 
-theorem inv_func_surj (f : IsometricZ) : ∀ y : Int, ∃ x, inv_func (f.func x) = y := by
+theorem inv_func_func_eq_self (f : IsometricZ) : ∀ x, (inv_func f.func) (f.func x) = x := by
+  intro x
+  simp [inv_func]
+  simp [generalFormIsometry f x]
+  rw [←Int.mul_assoc (f.func 1 - f.func 0) (f.func 1 - f.func 0) x]
+  have h : Int.natAbs (f.func 1 - f.func 0) = 1 := by
+    let h1 := f.d_preserve 1 0
+    simp [MyMetricSpace.d] at h1
+    apply nat_to_real_inj at h1
+    symm at h1
+    exact h1
+  simp [Int.natAbs_eq_iff] at h
+  if h1 : (f.func 1 - f.func 0) = 1 then
+    simp [h1]
+  else
+    simp [h1] at h
+    simp [h]
+
+
+theorem inv_func_surj (f : IsometricZ) : ∀ y : Int, ∃ x, (inv_func f.func) x = y := by
   intro y
   exists f.func y
-  sorry
+  exact inv_func_func_eq_self f y
+
+def inv : IsometricZ → IsometricZ
+  | ⟨f, hd, hs⟩ => ⟨(inv_func f), (inv_func_d_preserve ⟨f, hd, hs⟩), (inv_func_surj ⟨f, hd, hs⟩)⟩
+
 
 end IsometricZ
 
+--test
+
 instance : MyGroup IsometricZ where
   mul := MyIsometry.comp
-  one := MyIsometry.Id/-Combine all three results to create function inverse which takes
-an Isometry to another-/
-
-  inv := sorry
+  one := MyIsometry.Id
+  inv := IsometricZ.inv
   mul_assoc := sorry
   mul_one := sorry
   one_mul := sorry
