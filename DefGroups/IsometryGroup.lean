@@ -431,7 +431,38 @@ instance : MyGroup IsometricZ where
   mul := MyIsometry.comp
   one := MyIsometry.Id
   inv := IsometricZ.inv
-  mul_assoc := sorry
-  mul_one := sorry
-  one_mul := sorry
-  inv_right_mul := sorry
+  mul_assoc := by
+    intro f g k
+    have hf : f = ⟨f.func, f.d_preserve, f.func_sur⟩ := by rfl
+    have hg : g = ⟨g.func, g.d_preserve, g.func_sur⟩ := by rfl
+    have hk : k = ⟨k.func, k.d_preserve, k.func_sur⟩ := by rfl
+    rw [hf, hg, hk]
+    simp [MyIsometry.comp]
+    have h : (f.func ∘ g.func) ∘ k.func = f.func ∘ (g.func ∘ k.func) := by rfl
+    simp [h]
+  mul_one := by
+    simp [MyIsometry.Id]
+    intro g
+    have hg : g = ⟨g.func, g.d_preserve, g.func_sur⟩ := by rfl
+    rw [hg]
+    simp [MyIsometry.comp]
+    have h : g.func ∘ (fun x => x) = g.func := by rfl
+    simp [h]
+
+  one_mul := by
+    simp [MyIsometry.Id]
+    intro g
+    have hg : g = ⟨g.func, g.d_preserve, g.func_sur⟩ := by rfl
+    rw [hg]
+    simp [MyIsometry.comp]
+    have h : (fun x => x) ∘ g.func = g.func := by rfl
+    simp [h]
+
+  inv_left_mul := by
+    intro g
+    have hg : g = ⟨g.func, g.d_preserve, g.func_sur⟩ := by rfl
+    rw [hg]
+    simp [IsometricZ.inv, MyIsometry.comp, MyIsometry.Id]
+    have h : (IsometricZ.inv_func g.func) ∘ g.func = fun x => x := by
+      simp [Function.comp, IsometricZ.inv_func_func_eq_self]
+    simp [h]
