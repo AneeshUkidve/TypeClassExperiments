@@ -1,6 +1,7 @@
 import Mathlib
 import DefGroups.MyGroups
 
+--Definition of an arbitrary Metric Space
 class MyMetricSpace (α : Type*) where
   d : α → α → ℝ
   pos_def : ∀ x y : α, (d x y) = 0 ↔ x = y
@@ -8,7 +9,6 @@ class MyMetricSpace (α : Type*) where
   triangle : ∀ x y z : α, (d x z) ≤ (d x y) + (d y z)
 
 namespace MyMetricSpace
-
 
 theorem d_nonneg {α : Type*} [MyMetricSpace α] : ∀ x y : α, 0 ≤ (d x y) := by
   intro x y
@@ -34,6 +34,7 @@ theorem eq_imp_d_zero {α : Type*} [MyMetricSpace α] (x y : α) (h : x = y) : d
 end MyMetricSpace
 
 
+/-Defining an Isomorphic Isometry over a given metric space-/
 @[ext]
 structure MyIsometry {α : Type*} (inst : MyMetricSpace α) where
   func : α → α
@@ -42,7 +43,14 @@ structure MyIsometry {α : Type*} (inst : MyMetricSpace α) where
 
 namespace MyIsometry
 
+/-To define compostion of isometries (say f g), we need to
+  1 ) take the functions to the composed function (f ∘ g)
+  2 ) take the d_preserving hypotheses (of f and g) and create one for (f ∘ g)
+  3 ) take the func_surjective hypotheses (of f and g) and create one for (f ∘ g)
+-/
 
+/-This theorem accomplishes step 2, given two isometries, it returns that the
+composition preserves distance-/
 theorem comp_eq_d_preserve {α : Type*} [M : MyMetricSpace α] (f g : α → α) (hdf : ∀ x y : α, M.d x y = M.d (f x) (f y)) (hdg : ∀ x y : α, M.d x y = M.d (g x) (g y)) :
   ∀ x y : α, M.d x y = M.d ((f ∘ g) x) ((f ∘ g) y) := by
   intro x y
@@ -51,6 +59,9 @@ theorem comp_eq_d_preserve {α : Type*} [M : MyMetricSpace α] (f g : α → α)
     _ = M.d (g x) (g y) := by apply hdg
     _ = M.d (f (g x)) (f (g y)) := by apply hdf
 
+
+/-This theorem accomplishes step 3, given two isometries, it returns that the
+composition is surjective-/
 theorem comp_eq_surj {α : Type*} [MyMetricSpace α] (f g : α → α) (hsf : ∀ y : α, ∃ x : α, f x = y) (hsg : ∀ y : α, ∃ x : α, g x = y) :
   ∀ y : α, ∃ x : α, (f ∘ g) x = y := by
   intro y
@@ -62,21 +73,18 @@ theorem comp_eq_surj {α : Type*} [MyMetricSpace α] (f g : α → α) (hsf : �
   exists x
   rw [h2, h1]
 
+/-Combines all three steps to make a composed isometry-/
+def comp {α : Type*} [M : MyMetricSpace α] : MyIsometry M → MyIsometry M → MyIsometry M
+  | mk f hdf hsf, mk g hdg hsg => mk (f ∘ g) (comp_eq_d_preserve f g hdf hdg) (comp_eq_surj f g hsf hsg)
+
+/-Theorem that an Isometric Isomorphism is injective-/
 theorem func_inj {α : Type*} [M : MyMetricSpace α] (f : MyIsometry M) (x y : α) (h : f.func x = f.func y) : x = y := by
   apply M.eq_imp_d_zero at h
   rw [←f.d_preserve] at h
   rw [M.pos_def] at h
   exact h
 
-/-
-Could not define Inverses, got confused with noncomputable defs, could not
-make it work.
--/
-
-
-def comp {α : Type*} [M : MyMetricSpace α] : MyIsometry M → MyIsometry M → MyIsometry M
-  | mk f hdf hsf, mk g hdg hsg => mk (f ∘ g) (comp_eq_d_preserve f g hdf hdg) (comp_eq_surj f g hsf hsg)
-
+/-Defines Identity function for a metric space and proves it is an isometric isomorphism-/
 def Id {α : Type*} [M : MyMetricSpace α] : MyIsometry M where
   func := fun x => x
   d_preserve := by
@@ -90,7 +98,12 @@ end MyIsometry
 
 /-We Will Show
   1) Integers form a metric space
-  2) The Isometries of it from a group under composition
+  2) The Isometries over it from a group under composition
+-/
+
+/-The metric for Integers will be the usual metric := |x - y|
+Int.natAbs takes integers x y and returns |x - y| : ℕ
+nat_to_real casts naturals to reals
 -/
 
 def nat_to_real : ℕ → ℝ
@@ -113,7 +126,6 @@ theorem nat_to_real_monotone0 (n : ℕ) (h : 0 ≤ n) : 0 ≤ nat_to_real n := b
       exact h1
     rw [nat_to_real]
     exact h2
-
 
 theorem nat_to_real_inj0 (n : ℕ) (h : nat_to_real n = 0) : n = 0 := by
   cases n
@@ -177,12 +189,13 @@ theorem nat_to_real_inj : ∀ m n : Nat, nat_to_real m = nat_to_real n → m = n
     simp
     exact h
 
-
+/-Proves that Int.natAbs obeys the triangle inequality-/
 theorem natAbs_triangle  : ∀ a b c : ℤ, Int.natAbs (a - c) ≤ Int.natAbs (a - b) + Int.natAbs (b - c) := by
   intro a b c
   have h : a - c = (a - b) + (b - c) := by simp
   rw [h]
   apply Int.natAbs_add_le
+
 
 instance MetricZ : MyMetricSpace Int where
   d := fun a b => nat_to_real (Int.natAbs (a - b))
@@ -225,15 +238,24 @@ instance MetricZ : MyMetricSpace Int where
     rw [nat_to_real_lin] at h1
     exact h1
 
-def IsometricZ := MyIsometry MetricZ
+def IsometriesOverZ := MyIsometry MetricZ
 
-namespace IsometricZ
 
+namespace IsometriesOverZ
+
+/-Again to define the inverse of an isometry we need to construct 3 things
+  1 ) The inverse function ℤ → ℤ
+  2 ) The statement that it is d_preserving
+  3 ) The statement that it is surjective
+-/
+
+/-This takes an isometric function to its "inverse"
+We prove later that this is indeed the inverse-/
 def inv_func : (Int → Int) → (Int → Int)
   | f => fun x => ((f 1) - (f 0)) * (x - f 0)
 
-
-theorem inv_func_d_preserve (f : IsometricZ) :
+/-Proves that the "inv" of an isometry preserves distance-/
+theorem inv_func_d_preserve (f : IsometriesOverZ) :
   ∀ x y : ℤ, MetricZ.d x y = MetricZ.d (inv_func f.func x) (inv_func f.func y) := by
   intro x y
   simp [inv_func]
@@ -256,7 +278,21 @@ theorem inv_func_d_preserve (f : IsometricZ) :
   simp [h3]
 
 
-theorem consecutive_dif_same (f : IsometricZ) (d : ℤ) : f.func (d + 1) - f.func d = f.func d - f.func (d - 1) := by
+/-To prove that the inverse we have defined is indeed the inverse, we first prove
+that any Isometry over the integers is of the form "f(x) = f(0) + (f(1) - f(0)) * x"
+After this result, the inverse and therefore the surjective hypothesis for the inverse
+follow trivially
+-/
+
+/-We prove the general form in 3 steps
+  Given an isometry f,
+    1) ∀ d, f(d + 1) - f(d) = f(d) - f(d - 1)
+    2) ∀ d, f(d + 1) - f(d) = f(1) - f(0)
+    3) ∀ d, f(d) = f(0) + (f(1) - f(0)) * d
+-/
+
+/-This proves step 1-/
+theorem consecutive_dif_same (f : IsometriesOverZ) (d : ℤ) : f.func (d + 1) - f.func d = f.func d - f.func (d - 1) := by
   have h : Int.natAbs (f.func (d + 1) - f.func (d - 1)) = 2 := by
     let h1 := f.d_preserve (d + 1) (d - 1)
     simp [MyMetricSpace.d] at h1
@@ -325,7 +361,8 @@ theorem consecutive_dif_same (f : IsometricZ) (d : ℤ) : f.func (d + 1) - f.fun
         simp [h5] at h
     rw [h3, h7]
 
-theorem consecutive_d_same (f : IsometricZ) : ∀ n : Int, f.func (↑n + 1) - f.func (↑n) = (f.func 1 - f.func 0) := by
+/-This proves step 2-/
+theorem consecutive_d_same (f : IsometriesOverZ) : ∀ n : Int, f.func (↑n + 1) - f.func (↑n) = (f.func 1 - f.func 0) := by
   intro n
   cases n
   rename_i n
@@ -354,7 +391,8 @@ theorem consecutive_d_same (f : IsometricZ) : ∀ n : Int, f.func (↑n + 1) - f
     have h2 : (Int.negSucc (Nat.succ d)) = Int.negSucc (d + 1) := by rfl
     rw [h1, h2, hd]
 
-theorem generalFormIsometry (f : IsometricZ) : ∀x : ℤ, f.func x = f.func 0 + (f.func 1 - f.func 0) * x := by
+/-This proves step 3-/
+theorem generalFormIsometry (f : IsometriesOverZ) : ∀x : ℤ, f.func x = f.func 0 + (f.func 1 - f.func 0) * x := by
   intro n
   cases n
   rename_i n
@@ -394,8 +432,8 @@ theorem generalFormIsometry (f : IsometricZ) : ∀x : ℤ, f.func x = f.func 0 +
         _ = f.func 0 + (f.func 1 - f.func 0) * ((Int.negSucc d) - 1) := by ring
         _ = f.func 0 + (f.func 1 - f.func 0) * (Int.negSucc (d + 1)) := by simp
 
-
-theorem inv_func_func_eq_self (f : IsometricZ) : ∀ x, (inv_func f.func) (f.func x) = x := by
+/-Proof that the inverse we defined is indeed the inverse-/
+theorem inv_func_func_eq_self (f : IsometriesOverZ) : ∀ x, (inv_func f.func) (f.func x) = x := by
   intro x
   simp [inv_func]
   simp [generalFormIsometry f x]
@@ -413,24 +451,24 @@ theorem inv_func_func_eq_self (f : IsometricZ) : ∀ x, (inv_func f.func) (f.fun
     simp [h1] at h
     simp [h]
 
-
-theorem inv_func_surj (f : IsometricZ) : ∀ y : Int, ∃ x, (inv_func f.func) x = y := by
+/-Proof that the inverse we defined is surjective-/
+theorem inv_func_surj (f : IsometriesOverZ) : ∀ y : Int, ∃ x, (inv_func f.func) x = y := by
   intro y
   exists f.func y
   exact inv_func_func_eq_self f y
 
-def inv : IsometricZ → IsometricZ
+/-With all 3 statements constructed, we can define the inverse of an  Isometry over ℤ-/
+def inv : IsometriesOverZ → IsometriesOverZ
   | ⟨f, hd, hs⟩ => ⟨(inv_func f), (inv_func_d_preserve ⟨f, hd, hs⟩), (inv_func_surj ⟨f, hd, hs⟩)⟩
 
 
-end IsometricZ
+end IsometriesOverZ
 
---test
-
-instance : MyGroup IsometricZ where
+/-The isometric isomorphisms form a group under comp and inv, with Id as the identity-/
+instance IsometryGroupZ : MyGroup IsometriesOverZ where
   mul := MyIsometry.comp
   one := MyIsometry.Id
-  inv := IsometricZ.inv
+  inv := IsometriesOverZ.inv
   mul_assoc := by
     intro f g k
     have hf : f = ⟨f.func, f.d_preserve, f.func_sur⟩ := by rfl
@@ -462,7 +500,13 @@ instance : MyGroup IsometricZ where
     intro g
     have hg : g = ⟨g.func, g.d_preserve, g.func_sur⟩ := by rfl
     rw [hg]
-    simp [IsometricZ.inv, MyIsometry.comp, MyIsometry.Id]
-    have h : (IsometricZ.inv_func g.func) ∘ g.func = fun x => x := by
-      simp [Function.comp, IsometricZ.inv_func_func_eq_self]
+    simp [IsometriesOverZ.inv, MyIsometry.comp, MyIsometry.Id]
+    have h : (IsometriesOverZ.inv_func g.func) ∘ g.func = fun x => x := by
+      simp [Function.comp, IsometriesOverZ.inv_func_func_eq_self]
     simp [h]
+
+example {G : MyGroup IsometriesOverZ} (f : IsometriesOverZ) : f * f⁻¹ = 1 := by
+  exact G.inv_right_mul f
+
+example {G : MyGroup IsometriesOverZ} (f g : IsometriesOverZ) : (f * g)⁻¹ = g⁻¹ * f⁻¹ := by
+  exact G.mul_inv_dist f g
